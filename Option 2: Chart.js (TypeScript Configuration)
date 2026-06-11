@@ -1,0 +1,53 @@
+import { ChartConfiguration } from 'chart.js';
+import { CashJumpLabelResolver, TransactionContext } from './CashJumpLabelResolver';
+
+interface RichDataPoint {
+  x: string; // Date string
+  y: number; // Cash balance value
+  context?: TransactionContext;
+}
+
+const rawChartData: RichDataPoint[] = [
+  { x: '2026-06-01', y: 0.00 },
+  { 
+    x: '2026-06-02', 
+    y: 16.97, 
+    context: {
+      ticker: 'PSPC', isDelisted: true, isSpac: true, wasRedemed: true,
+      previousCashBalance: 0.00, currentCashBalance: 16.97, feeCharged: 0.00
+    }
+  },
+  { x: '2026-06-03', y: 16.97 }
+];
+
+// Configuration object explicitly typed for Chart.js
+export const chartJsConfig: ChartConfiguration<'line', RichDataPoint[]> = {
+  type: 'line',
+  data: {
+    datasets: [{
+      label: 'Cash Balance',
+      data: rawChartData,
+      borderColor: '#36A2EB',
+      fill: false
+    }]
+  },
+  options: {
+    plugins: {
+      tooltip: {
+        callbacks: {
+          // Dynamically compute the label when a user hovers over the jump
+          label: (context) => {
+            const rawPoint = context.raw as RichDataPoint;
+            
+            if (rawPoint.context) {
+              const actionLabel = CashJumpLabelResolver.getLabel(rawPoint.context);
+              return `${actionLabel}: $${rawPoint.y} (${rawPoint.context.ticker})`;
+            }
+            
+            return `Balance: $${rawPoint.y}`;
+          }
+        }
+      }
+    }
+  }
+};
