@@ -1,0 +1,56 @@
+import { ApexOptions } from 'apexcharts';
+import { CashJumpLabelResolver, TransactionContext } from './CashJumpLabelResolver';
+
+interface TimelinePoint {
+  date: string;
+  balance: number;
+  context?: TransactionContext;
+}
+
+export function generateApexConfig(dataPoints: TimelinePoint[]): ApexOptions {
+  // Find points that have a corporate action to display visually directly on the chart
+  const annotations = dataPoints
+    .filter(p => p.context !== undefined)
+    .map(p => {
+      const label = CashJumpLabelResolver.getLabel(p.context!);
+      return {
+        x: p.date,
+        y: p.balance,
+        marker: { size: 6, fillColor: '#FF4560' },
+        label: {
+          borderColor: '#FF4560',
+          style: { color: '#fff', background: '#FF4560' },
+          text: `${label} (${p.context!.ticker})`
+        }
+      };
+    });
+
+  return {
+    series: [{
+      name: 'Cash Balance',
+      data: dataPoints.map(p => p.balance)
+    }],
+    chart: {
+      type: 'area',
+      height: 350
+    },
+    xaxis: {
+      categories: dataPoints.map(p => p.date)
+    },
+    annotations: {
+      points: annotations // Injects the custom dynamic labels onto the canvas
+    },
+    tooltip: {
+      y: {
+        formatter: (val, opts) => {
+          const index = opts.dataPointIndex;
+          const targetPoint = dataPoints[index];
+          if (targetPoint.context) {
+            return `$${val} - ${CashJumpLabelResolver.getLabel(targetPoint.context)}`;
+          }
+          return `$${val}`;
+        }
+      }
+    }
+  };
+}
